@@ -219,6 +219,59 @@ mrb_value mrb_lua_setglobal(mrb_state* mrb, mrb_value self)
   return mrb_nil_value();
 }
 
+mrb_value mrb_lua_callglobal(mrb_state* mrb, mrb_value self)
+{
+  mrb_lua_data* data = DATA_PTR(self);
+  if (data->closed)
+    mrb_lua_raise_closed(mrb);
+
+  lua_State* L = data->L;
+
+  mrb_value key;
+  mrb_value arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9;
+
+  int argc = mrb_get_args(mrb, "S|ooooooooo", &key, &arg1, &arg2, &arg3, &arg4, &arg5, &arg6, &arg7, &arg8, &arg9) - 1;
+
+  lua_getglobal(L, RSTRING_PTR(key));
+
+  switch(argc) {
+    case 0:
+      break;
+    case 1:
+      mrb_to_lua(mrb, L, arg1);
+      break;
+    case 2:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2);
+      break;
+    case 3:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3);
+      break;
+    case 4:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3); mrb_to_lua(mrb, L, arg4);
+      break;
+    case 5:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3); mrb_to_lua(mrb, L, arg4); mrb_to_lua(mrb, L, arg5);
+      break;
+    case 6:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3); mrb_to_lua(mrb, L, arg4); mrb_to_lua(mrb, L, arg5); mrb_to_lua(mrb, L, arg6);
+      break;
+    case 7:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3); mrb_to_lua(mrb, L, arg4); mrb_to_lua(mrb, L, arg5); mrb_to_lua(mrb, L, arg6); mrb_to_lua(mrb, L, arg7);
+      break;
+    case 8:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3); mrb_to_lua(mrb, L, arg4); mrb_to_lua(mrb, L, arg5); mrb_to_lua(mrb, L, arg6); mrb_to_lua(mrb, L, arg7); mrb_to_lua(mrb, L, arg8);
+      break;
+    case 9:
+      mrb_to_lua(mrb, L, arg1); mrb_to_lua(mrb, L, arg2); mrb_to_lua(mrb, L, arg3); mrb_to_lua(mrb, L, arg4); mrb_to_lua(mrb, L, arg5); mrb_to_lua(mrb, L, arg6); mrb_to_lua(mrb, L, arg7); mrb_to_lua(mrb, L, arg8); mrb_to_lua(mrb, L, arg9);
+      break;
+  }
+
+  lua_call(L, argc, 1);
+  mrb_value ret = lua_to_mrb(mrb, L, -1);
+  lua_pop(L, 1);
+  return ret;
+}
+
 mrb_value mrb_lua_close(mrb_state* mrb, mrb_value self)
 {
   mrb_lua_data* data = DATA_PTR(self);
@@ -249,6 +302,7 @@ void mrb_mruby_lua_gem_init(mrb_state* mrb)
   mrb_define_method(mrb, rclass, "dofile",     mrb_lua_dofile,    MRB_ARGS_REQ(1));
   mrb_define_method(mrb, rclass, "[]",         mrb_lua_getglobal, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, rclass, "[]=",        mrb_lua_setglobal, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, rclass, "call_global",mrb_lua_callglobal,MRB_ARGS_REQ(1)|MRB_ARGS_OPT(9));
   return;
 }
 
