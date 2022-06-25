@@ -13,14 +13,23 @@
 #include <lua5.2/lua.h>
 #include <lua5.2/lauxlib.h>
 #endif
+#include <stdlib.h>
+
+typedef struct {
+  lua_State* L;
+  int closed;
+} mrb_lua_data;
 
 void luaL_openlibs(lua_State*);
 
 void mrb_lua_final(mrb_state* mrb, void* p)
 {
-  lua_State* L = p;
-  lua_close(L);
-  // mrb_free(mrb, p);
+  mrb_lua_data* data = p;
+  if (!data->closed) {
+    lua_State* L = data->L;
+    lua_close(L);
+    // mrb_free(mrb, p);
+  }
 }
 
 static struct mrb_data_type class_lua_type = { "Lua", mrb_lua_final };
@@ -29,8 +38,19 @@ mrb_value mrb_lua_init(mrb_state* mrb, mrb_value self)
 {
   lua_State* L = luaL_newstate();
   luaL_openlibs(L);
-  DATA_PTR(self) = L;
-  DATA_TYPE(self) = &class_lua_type;
+
+  mrb_lua_data* data = DATA_PTR(self);
+
+  if (data)
+    mrb_free(mrb, data);
+
+  mrb_data_init(self, NULL, &class_lua_type);
+
+  data = malloc(sizeof(mrb_lua_data));
+  data->L = L;
+  data->closed = 0;
+
+  mrb_data_init(self, data, &class_lua_type);
   return self;
 }
 
@@ -131,11 +151,22 @@ void mrb_to_lua(mrb_state* mrb, lua_State* L, mrb_value val)
   return;
 }
 
+void mrb_lua_raise_closed(mrb_state* mrb)
+{
+  mrb_raise(mrb, E_SCRIPT_ERROR, "Lua state closed");
+}
+
 mrb_value mrb_lua_dostring(mrb_state* mrb, mrb_value self)
 {
-  lua_State* L = DATA_PTR(self);
+  mrb_lua_data* data = DATA_PTR(self);
+  if (data->closed)
+    mrb_lua_raise_closed(mrb);
+
+  lua_State* L = data->L;
+
   mrb_value str;
   mrb_get_args(mrb, "S", &str);
+
   if (luaL_dostring(L, RSTRING_PTR(str))) {
     mrb_raise(mrb, E_SCRIPT_ERROR, lua_tostring(L, -1));
   }
@@ -144,9 +175,15 @@ mrb_value mrb_lua_dostring(mrb_state* mrb, mrb_value self)
 
 mrb_value mrb_lua_dofile(mrb_state* mrb, mrb_value self)
 {
-  lua_State* L = DATA_PTR(self);
+  mrb_lua_data* data = DATA_PTR(self);
+  if (data->closed)
+    mrb_lua_raise_closed(mrb);
+
+  lua_State* L = data->L;
+
   mrb_value path;
   mrb_get_args(mrb, "S", &path);
+
   if (luaL_dofile(L, RSTRING_PTR(path))) {
     mrb_raise(mrb, E_SCRIPT_ERROR, lua_tostring(L, -1));
   }
@@ -155,7 +192,12 @@ mrb_value mrb_lua_dofile(mrb_state* mrb, mrb_value self)
 
 mrb_value mrb_lua_getglobal(mrb_state* mrb, mrb_value self)
 {
-  lua_State* L = DATA_PTR(self);
+  mrb_lua_data* data = DATA_PTR(self);
+  if (data->closed)
+    mrb_lua_raise_closed(mrb);
+
+  lua_State* L = data->L;
+
   mrb_value key;
   mrb_get_args(mrb, "S", &key);
   lua_getglobal(L, RSTRING_PTR(key));
@@ -164,12 +206,38 @@ mrb_value mrb_lua_getglobal(mrb_state* mrb, mrb_value self)
 
 mrb_value mrb_lua_setglobal(mrb_state* mrb, mrb_value self)
 {
-  lua_State* L = DATA_PTR(self);
+  mrb_lua_data* data = DATA_PTR(self);
+  if (data->closed)
+    mrb_lua_raise_closed(mrb);
+
+  lua_State* L = data->L;
+
   mrb_value key, val;
   mrb_get_args(mrb, "So", &key, &val);
   mrb_to_lua(mrb, L, val);
   lua_setglobal(L, RSTRING_PTR(key));
   return mrb_nil_value();
+}
+
+mrb_value mrb_lua_close(mrb_state* mrb, mrb_value self)
+{
+  mrb_lua_data* data = DATA_PTR(self);
+  if (data->closed) {
+    return mrb_false_value();
+  }
+  data->closed = 1;
+  lua_close(data->L);
+  return mrb_true_value();
+}
+
+mrb_value mrb_lua_closed(mrb_state* mrb, mrb_value self)
+{
+  mrb_lua_data* data = DATA_PTR(self);
+
+  if (data->closed)
+    return mrb_true_value();
+  else
+    return mrb_false_value();
 }
 
 void mrb_mruby_lua_gem_init(mrb_state* mrb)
