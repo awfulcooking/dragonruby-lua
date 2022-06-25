@@ -6,8 +6,13 @@
 #include <mruby/string.h>
 #include <mruby/data.h>
 #include <mruby/variable.h>
+#ifdef USE_LUAJIT
+#include <luajit/lua.h>
+#include <luajit/lauxlib.h>
+#else
 #include <lua5.2/lua.h>
 #include <lua5.2/lauxlib.h>
+#endif
 
 void luaL_openlibs(lua_State*);
 
