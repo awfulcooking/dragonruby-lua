@@ -298,8 +298,10 @@ void mrb_mruby_lua_gem_init(mrb_state* mrb)
   struct RClass* rclass = mrb_define_class(mrb, "Lua", mrb->object_class);
   MRB_SET_INSTANCE_TT(rclass, MRB_TT_DATA);
   mrb_define_method(mrb, rclass, "initialize", mrb_lua_init,      MRB_ARGS_NONE());
-  mrb_define_method(mrb, rclass, "dostring",   mrb_lua_dostring,  MRB_ARGS_REQ(1));
   mrb_define_method(mrb, rclass, "dofile",     mrb_lua_dofile,    MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, rclass, "dostring",   mrb_lua_dostring,  MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, rclass, "<<",         mrb_lua_dostring,  MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, rclass, "run",        mrb_lua_dostring,  MRB_ARGS_REQ(1));
   mrb_define_method(mrb, rclass, "[]",         mrb_lua_getglobal, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, rclass, "[]=",        mrb_lua_setglobal, MRB_ARGS_REQ(2));
   mrb_define_method(mrb, rclass, "call_global",mrb_lua_callglobal,MRB_ARGS_REQ(1)|MRB_ARGS_OPT(9));
